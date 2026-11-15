@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "RaveCall",
+    "slug": "ravecall",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ravecall.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#150E2A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.ravecall.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "@livekit/react-native-expo-plugin",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "microphonePermission": "RaveCall uses your microphone only when you turn on Share my voice, so friends can hear you.",
+          "cameraPermission": "RaveCall uses the camera to scan a friend's voice code."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "RaveCall uses the camera to scan a friend's voice code.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ]
+    ],
+    "scheme": "ravecall",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
