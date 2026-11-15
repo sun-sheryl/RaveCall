@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RaveCall: rave audio for your hearing devices</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2.5.0/dist/livekit-client.umd.js"></script>
+<style>
+:root{--bg:#f3effc;--card:#fff;--ink:#1d1533;--mut:#6d6488;--uv:#6a43ff;--ok:#0f9d7a;--warn:#c77700;--bad:#d1263f;--line:#ddd5f3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#150e2a;--card:#201740;--ink:#efeaff;--mut:#a79fc6;--uv:#9a7dff;--ok:#3fd6b0;--warn:#ffb23e;--bad:#ff5f78;--line:#33275c}}
+:root[data-theme="dark"]{--bg:#150e2a;--card:#201740;--ink:#efeaff;--mut:#a79fc6;--uv:#9a7dff;--ok:#3fd6b0;--warn:#ffb23e;--bad:#ff5f78;--line:#33275c}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "DM Sans",system-ui,sans-serif;max-width:520px;margin-inline:auto;padding:16px 16px 40px}
+h1,h2,.big{font-family:Syne,"DM Sans",sans-serif;letter-spacing:-.02em;margin:0}
+h1{font-size:24px}h2{font-size:18px;margin-bottom:8px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+nav{display:flex;gap:6px;background:var(--card);padding:4px;border-radius:14px;margin-bottom:14px;border:1px solid var(--line)}
+nav button{flex:1;border:0;background:none;color:var(--mut);padding:9px;border-radius:10px;font:inherit;font-weight:500;cursor:pointer}
+nav button[aria-selected=true]{background:var(--uv);color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+button:focus-visible,input:focus-visible{outline:3px solid var(--uv);outline-offset:2px}
+.btn{border:0;background:var(--uv);color:#fff;font:inherit;font-weight:700;padding:12px 18px;border-radius:12px;cursor:pointer;width:100%}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.dial{text-align:center;padding:8px 0 4px}
+.big{font-size:76px;line-height:1}
+.unit{color:var(--mut);font-size:15px}
+.state{font-weight:700;margin-top:4px}
+.bars{display:flex;gap:3px;height:46px;align-items:flex-end;margin:12px 0}
+.bars i{flex:1;background:var(--uv);border-radius:3px;height:4px;transition:height .08s}
+input[type=range]{width:100%;accent-color:var(--uv);height:36px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.mut{color:var(--mut);font-size:14px}
+.meter{height:12px;background:var(--line);border-radius:8px;overflow:hidden;margin:8px 0}
+.meter b{display:block;height:100%;width:0;background:var(--ok);transition:width .3s,background .3s}
+.chk{display:flex;gap:10px;align-items:flex-start;margin:10px 0}
+.chk input{margin-top:5px;width:18px;height:18px;accent-color:var(--uv)}
+#qr{display:flex;justify-content:center;padding:12px;background:#fff;border-radius:14px;width:fit-content;margin:8px auto}
+#qr svg,#qr img{width:180px;height:180px}
+.friend{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--line);flex:none}
+.dot.on{background:var(--ok);box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 25%,transparent)}
+.friend .grow{flex:1}
+.sm{padding:7px 12px;width:auto;font-size:14px}
+video{width:100%;border-radius:14px;background:#000;max-height:220px;object-fit:cover}
+.banner{background:color-mix(in srgb,var(--warn) 18%,var(--card));border:1px solid var(--warn);border-radius:14px;padding:12px;margin-bottom:12px;display:none}
+[hidden]{display:none!important}
+.code{width:100%;font:inherit;font-size:20px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;text-align:center;padding:12px;margin:6px 0;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+.code:disabled{opacity:.6}
+</style></head><body>
+<header><h1>RaveCall</h1><span class="mut" id="chan">Not joined</span></header>
+<nav role="tablist"><button role="tab" aria-selected="true" data-t="listen">Listen</button><button role="tab" aria-selected="false" data-t="voices">Voices</button><button role="tab" aria-selected="false" data-t="safety">Safety</button></nav>
+<div class="banner" id="banner" role="alert"></div>
+
+<section id="listen">
+ <div class="card">
+  <div class="dial"><div class="big" id="db">--</div><div class="unit">dB at your ear (estimate)</div><div class="state" id="state">Join the channel to start</div></div>
+  <div class="bars" id="bars" aria-hidden="true"></div>
+  <label for="code" class="mut">Event code</label>
+  <input id="code" class="code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ENTER CODE" maxlength="20">
+  <p class="mut" id="codemsg" role="status" style="margin:0 0 10px">Enter the code from your event.</p>
+  <button class="btn" id="join">Join main audio channel</button>
+ </div>
+ <div class="card">
+  <div class="row"><h2>Your volume</h2><span class="mut" id="volv">40%</span></div>
+  <input type="range" id="vol" min="0" max="100" value="40" aria-label="Listening volume">
+  <div class="row mut"><span>Quiet</span><span>Capped at <b id="capv">85</b> dB</span></div>
+ </div>
+ <div class="card">
+  <div class="row"><h2>Today's hearing dose</h2><span id="dosev" class="mut">0%</span></div>
+  <div class="meter"><b id="dose"></b></div>
+  <p class="mut" style="margin:0" id="dosetxt">At 85 dB you can safely listen for about 8 hours. Every 3 dB louder halves that.</p>
+ </div>
+ </section>
+
+<section id="voices" hidden>
+ <div class="card">
+  <h2>Your voice code</h2>
+  <p class="mut" style="margin-top:0">Friends scan this to hear you through their hearing devices. It works with or without an event. Your mic stays off unless you turn on Share my voice.</p>
+  <div id="qr" aria-label="Your voice QR code"></div>
+  <div class="row"><span class="mut" id="myid"></span><button class="btn alt sm" id="newcode">New code</button></div>
+  <div class="chk"><input type="checkbox" id="share"><label for="share">Share my voice<br><span class="mut">Turns your mic on so friends who scan your code can hear you. Off by default.</span></label></div>
+ </div>
+ <div class="card">
+  <h2>Hear a friend</h2>
+  <video id="cam" playsinline muted hidden></video>
+  <button class="btn" id="scan">Scan a friend's code</button>
+  <p class="mut" id="scanmsg" style="margin-bottom:0">Camera scanning works in Chrome on Android. On other phones, type their code below.</p>
+  <input id="friendcode" class="code" style="font-size:16px;letter-spacing:0;text-transform:none;margin-top:10px" placeholder="Or type their code, e.g. ab12cd" autocomplete="off" autocapitalize="none"><button class="btn alt" id="addcode">Connect</button>
+ </div>
+ <div class="card">
+  <h2>Connected</h2><div id="list"><p class="mut" style="margin:0">No one yet.</p></div>
+  <div class="chk"><input type="checkbox" id="duck" checked><label for="duck">Lower the music while a friend talks<br><span class="mut">Their voice stays clear without turning everything up.</span></label></div>
+ </div>
+</section>
+
+<section id="safety" hidden>
+ <div class="card">
+  <h2>Protection settings</h2>
+  <div class="row"><span>Maximum level</span><b id="capv2">85 dB</b></div>
+  <input type="range" id="cap" min="75" max="100" value="85" aria-label="Maximum level in decibels">
+  <div class="chk"><input type="checkbox" id="auto" checked><label for="auto">Ease volume down automatically<br><span class="mut">If your dose passes 100%, the level drops 6 dB.</span></label></div>
+  <div class="chk"><input type="checkbox" id="rest" checked><label for="rest">Remind me to rest my ears<br><span class="mut">A prompt appears at 80% dose.</span></label></div>
+ </div>
+ <div class="card">
+  <h2>How levels are estimated</h2>
+  <p class="mut" style="margin:0">Your volume maps to a level between 60 and 105 dB at the ear, then the cap and a limiter hold it down. Real hearing devices report their own output, so a shipping app would read that value and calibrate to it. Dose follows the NIOSH 85 dB / 3 dB rule.</p>
+ </div>
+ <div class="card"><button class="btn alt" id="resetdose">Reset today's dose</button></div>
+</section>
+
+<script>
+const $=s=>document.querySelector(s);
+let ctx,master,limiter,musicGain,voiceBus,joined=false,analyser,beatTimer,step=0;
+const S={vol:.4,cap:85,dose:0,friends:[],warned80:false,lastT:0,event:''};
+try{const d=localStorage.getItem('ravecall-dose');if(d){const o=JSON.parse(d);if(o.day===new Date().toDateString())S.dose=o.dose||0}}catch(e){}
+
+// tabs
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x===b));
+ ['listen','voices','safety'].forEach(t=>$('#'+t).hidden=t!==b.dataset.t);
+});
+// bars
+for(let i=0;i<24;i++)$('#bars').appendChild(document.createElement('i'));
+
+// level model
+const levelDb=()=>Math.min(S.cap,60+45*S.vol)+(S.duck?0:0);
+function applyGain(){
+ if(!ctx)return;
+ let db=levelDb(); if(S.eased)db-=6;
+ master.gain.setTargetAtTime(Math.pow(10,(db-105)/20)*1.8,ctx.currentTime,.05);
+}
+// synth beat
+function hit(t,type){
+ const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(musicGain);
+ if(type==='k'){o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(40,t+.15);g.gain.setValueAtTime(1,t);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.start(t);o.stop(t+.32)}
+ else if(type==='h'){o.type='square';o.frequency.value=7000;const f=ctx.createBiquadFilter();f.type='highpass';f.frequency.value=6000;o.disconnect();o.connect(f);f.connect(g);g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+.05);o.start(t);o.stop(t+.06)}
+ else{o.type='sawtooth';o.frequency.value=type;const f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=700;o.disconnect();o.connect(f);f.connect(g);g.gain.setValueAtTime(.35,t);g.gain.exponentialRampToValueAtTime(.001,t+.22);o.start(t);o.stop(t+.25)}
+}
+function tick(){
+ const t=ctx.currentTime+.05,s=step%16,bass=[55,55,82,55,73,55,82,98];
+ if(s%4===0)hit(t,'k'); if(s%2===1)hit(t,'h'); if(s%2===0)hit(t+.0,bass[(s/2)%8]);
+ step++;
+}
+function startAudio(){
+ if(ctx)return;
+ ctx=new (window.AudioContext||window.webkitAudioContext)();if(ctx.resume)ctx.resume();
+ master=ctx.createGain();limiter=ctx.createDynamicsCompressor();
+ limiter.threshold.value=-12;limiter.knee.value=0;limiter.ratio.value=20;limiter.attack.value=.003;limiter.release.value=.1;
+ analyser=ctx.createAnalyser();analyser.fftSize=64;
+ musicGain=ctx.createGain();voiceBus=ctx.createGain();voiceBus.gain.value=3;
+ musicGain.connect(master);voiceBus.connect(master);master.connect(limiter);limiter.connect(analyser);analyser.connect(ctx.destination);
+ applyGain();joined=true;S.lastT=performance.now();cancelAnimationFrame(S.raf);loop();
+}
+function stopAudioIfIdle(){
+ if(!ctx||room||S.friends.length)return;
+ ctx.close();ctx=null;joined=false;
+ $('#db').textContent='--';$('#state').textContent='Join the channel to start';$('#state').style.color='';
+ document.querySelectorAll('#bars i').forEach(i=>i.style.height='4px');
+}
+async function getToken(body){
+ const r=await fetch('/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ if(!r.ok){const e=new Error(r.status);e.status=r.status;throw e}
+ return r.json();
+}
+async function join(){
+ if(room){leaveEvent();return}
+ const cm=$('#codemsg');cm.style.color='';cm.textContent='Connecting…';
+ let info;
+ try{info=await getToken({code:$('#code').value,identity:myId})}
+ catch(e){
+  cm.style.color='var(--bad)';
+  if(e.status===401){cm.textContent='That code isn’t valid. Check it with the event staff and try again.';$('#code').focus()}
+  else if(e.status===429)cm.textContent='Too many wrong tries. Wait a few minutes.';
+  else cm.textContent='Can’t reach the RaveCall server ('+e.message+'). Open /health on this site to check its settings.';
+  return;
+ }
+ S.event=info.event;cm.textContent='Connected to '+info.event+'. Waiting for the booth audio…';$('#code').disabled=true;
+ startAudio();
+ try{await connectRoom(info)}catch(e){room=null;stopAudioIfIdle();const m=$('#codemsg');m.textContent='Couldn’t reach the audio room. Try again.';m.style.color='var(--bad)';$('#code').disabled=false;return}
+ $('#join').textContent='Leave channel';$('#join').classList.add('alt');$('#chan').textContent=S.event+' · live';
+}
+function leaveEvent(){
+ if(room){room.disconnect();room=null}
+ $('#code').disabled=false;$('#codemsg').textContent='Enter the code from your event.';
+ $('#join').textContent='Join main audio channel';$('#join').classList.remove('alt');$('#chan').textContent='Not joined';
+ stopAudioIfIdle();
+}
+function stateFor(db){return db>=100?['Dangerous. Turn down now','var(--bad)']:db>=90?['Loud. Damage possible in under 2 hours','var(--warn)']:db>=85?['At the safe limit','var(--warn)']:['Comfortable for hours','var(--ok)']}
+function loop(){
+ if(!joined)return;
+ const now=performance.now(),dt=(now-S.lastT)/1000;S.lastT=now;
+ let db=levelDb()-(S.eased?6:0);
+ const bars=document.querySelectorAll('#bars i'),d=new Uint8Array(analyser.frequencyBinCount);analyser.getByteFrequencyData(d);
+ bars.forEach((b,i)=>b.style.height=Math.max(4,d[i]/255*46)+'px');
+ $('#db').textContent=Math.round(db);
+ const [txt,col]=stateFor(db);$('#state').textContent=txt;$('#state').style.color=col;
+ // dose
+ const allowed=8*3600/Math.pow(2,(db-85)/3);S.dose+=dt/allowed;
+ const p=S.dose*100;$('#dosev').textContent=Math.round(p)+'%';
+ const m=$('#dose');m.style.width=Math.min(100,p)+'%';m.style.background=p>=100?'var(--bad)':p>=80?'var(--warn)':'var(--ok)';
+ if(p>=80&&!S.warned80&&$('#rest').checked){S.warned80=true;banner('You\u2019ve used 80% of today\u2019s safe listening. Step away from the speakers for a few minutes.')}
+ if(p>=100&&!S.eased&&$('#auto').checked){S.eased=true;applyGain();banner('Dose limit reached. Your volume was lowered 6 dB.')}
+ try{localStorage.setItem('ravecall-dose',JSON.stringify({day:new Date().toDateString(),dose:S.dose}))}catch(e){}
+ S.raf=requestAnimationFrame(loop);
+}
+function banner(t){const b=$('#banner');b.textContent=t;b.style.display='block';setTimeout(()=>b.style.display='none',9000)}
+
+let room=null,vroom=null;const wanted=new Set();
+function route(track,p){
+ const ms=new MediaStream([track.mediaStreamTrack]);
+ const a=new Audio();a.srcObject=ms;a.muted=true;a.play().catch(()=>{}); // Chrome needs the stream attached to an element
+ const src=ctx.createMediaStreamSource(ms);
+ const board=p.identity.startsWith('soundboard');
+ src.connect(board?musicGain:voiceBus);
+ if(board)$('#codemsg').textContent='Connected to '+S.event+'. Booth audio is live.';
+}
+function trySub(p){
+ const board=p.identity.startsWith('soundboard');
+ if(!board&&!wanted.has(p.identity))return;
+ p.audioTrackPublications.forEach(pub=>{if(!pub.isSubscribed)pub.setSubscribed(true)});
+}
+async function connectRoom(info){
+ const LK=LivekitClient;
+ room=new LK.Room();
+ room.on(LK.RoomEvent.TrackSubscribed,(t,pub,p)=>{if(t.kind==='audio')route(t,p)});
+ room.on(LK.RoomEvent.TrackPublished,(pub,p)=>trySub(p));
+ room.on(LK.RoomEvent.ParticipantConnected,trySub);
+ await room.connect(info.url,info.token,{autoSubscribe:false});
+ room.remoteParticipants.forEach(trySub);
+}
+async function setShare(on){
+ if(!on){if(vroom){vroom.disconnect();vroom=null}return}
+ try{
+  const info=await getToken({mode:'voice',target:myId,owner:true,identity:myId});
+  const LK=LivekitClient;vroom=new LK.Room();
+  await vroom.connect(info.url,info.token);
+  await vroom.localParticipant.setMicrophoneEnabled(true,{echoCancellation:true,noiseSuppression:true});
+ }catch(e){if(vroom){vroom.disconnect();vroom=null}$('#share').checked=false;banner('Couldn’t turn on your mic. Allow microphone access and check your connection.')}
+}
+$('#share').onchange=()=>setShare($('#share').checked);
+$('#addcode').onclick=()=>{const v=$('#friendcode').value.trim().toLowerCase();if(v){addFriend('Friend '+v.slice(0,3),v);$('#friendcode').value=''}};
+$('#join').onclick=join;
+$('#code').addEventListener('keydown',e=>{if(e.key==='Enter')join()});
+$('#vol').oninput=e=>{S.vol=e.target.value/100;$('#volv').textContent=e.target.value+'%';applyGain()};
+$('#cap').oninput=e=>{S.cap=+e.target.value;$('#capv').textContent=S.cap;$('#capv2').textContent=S.cap+' dB';applyGain()};
+$('#resetdose').onclick=()=>{S.dose=0;S.warned80=false;S.eased=false;applyGain()};
+
+// voice code
+function newId(){return Math.random().toString(36).slice(2,8)}
+let myId=newId();
+function drawQR(){
+ const q=qrcode(0,'M');q.addData('ravecall://voice/'+myId);q.make();
+ $('#qr').innerHTML=q.createSvgTag({cellSize:6,margin:0});$('#myid').textContent='Code '+myId;
+}
+try{drawQR()}catch(e){$('#qr').textContent='QR unavailable'}
+$('#newcode').onclick=async()=>{myId=newId();try{drawQR()}catch(e){}if(vroom){vroom.disconnect();vroom=null;await setShare(true)}};
+
+// friends (simulated voices)
+let voiceTimers={};
+async function addFriend(name,id){
+ id=String(id).trim().toLowerCase();
+ if(!/^[a-z0-9]{4,12}$/.test(id)){banner('That code doesn’t look right. Check it and try again.');return}
+ if(id===myId){banner('That’s your own code.');return}
+ if(S.friends.find(f=>f.id===id))return;
+ startAudio();
+ const f={id,name,muted:false,talking:false,room:null};
+ try{
+  const info=await getToken({mode:'voice',target:id,identity:myId});
+  const LK=LivekitClient;const fr=new LK.Room();f.room=fr;
+  fr.on(LK.RoomEvent.TrackSubscribed,(t,pub,p)=>{if(t.kind==='audio')route(t,p)});
+  fr.on(LK.RoomEvent.ActiveSpeakersChanged,sp=>{f.talking=sp.some(x=>x.identity===id);renderFriends();updateDuck()});
+  await fr.connect(info.url,info.token);
+ }catch(e){banner('Couldn’t connect to that friend. Check the code and your connection.');stopAudioIfIdle();return}
+ S.friends.push(f);renderFriends();
+ $('#scanmsg').textContent='Connected. You’ll hear '+name+' when they turn on Share my voice.';
+}
+function renderFriends(){
+ const l=$('#list');if(!S.friends.length){l.innerHTML='<p class="mut" style="margin:0">No one yet.</p>';return}
+ l.innerHTML='';
+ S.friends.forEach(f=>{
+  const r=document.createElement('div');r.className='friend';
+  r.innerHTML='<span class="dot'+(f.talking?' on':'')+'"></span><span class="grow"><b>'+f.name+'</b><br><span class="mut">'+(f.muted?'Muted':f.talking?'Talking':'Connected')+'</span></span>';
+  const m=document.createElement('button');m.className='btn alt sm';m.textContent=f.muted?'Unmute':'Mute';m.onclick=()=>{f.muted=!f.muted;f.room.remoteParticipants.forEach(p=>p.audioTrackPublications.forEach(pub=>pub.setSubscribed(!f.muted)));renderFriends();updateDuck()};
+  const x=document.createElement('button');x.className='btn alt sm';x.textContent='Disconnect';x.onclick=()=>{if(f.room)f.room.disconnect();S.friends=S.friends.filter(g=>g!==f);renderFriends();updateDuck();stopAudioIfIdle()};
+  r.append(m,x);l.appendChild(r);
+ });
+}
+function updateDuck(){
+ if(!ctx)return;const talking=S.friends.some(f=>f.talking&&!f.muted)&&$('#duck').checked;
+ musicGain.gain.setTargetAtTime(talking?.35:1,ctx.currentTime,.08);
+}
+function startVoice(id){
+ const f=S.friends.find(x=>x.id===id);if(!f||!joined)return;
+ f.talking=true;renderFriends();updateDuck();
+ if(!f.muted){ // formant-ish babble
+  const t=ctx.currentTime,len=1.2+Math.random()*1.5;
+  for(let i=0;i<len*5;i++){
+   const o=ctx.createOscillator(),g=ctx.createGain(),b=ctx.createBiquadFilter();
+   o.type='sawtooth';o.frequency.value=150+Math.random()*60;b.type='bandpass';b.frequency.value=500+Math.random()*1800;b.Q.value=4;
+   o.connect(b);b.connect(g);g.connect(voiceBus);const s=t+i*.2;
+   g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(2.5,s+.04);g.gain.linearRampToValueAtTime(0,s+.17);o.start(s);o.stop(s+.2);
+  }
+  voiceTimers[id]=setTimeout(()=>{f.talking=false;renderFriends();updateDuck();voiceTimers[id]=setTimeout(()=>startVoice(id),1500+Math.random()*3000)},len*1000);
+ }else{f.talking=false;voiceTimers[id]=setTimeout(()=>startVoice(id),2000)}
+}
+$('#duck').onchange=updateDuck;
+
+// scan
+$('#scan').onclick=async()=>{
+ const msg=$('#scanmsg'),v=$('#cam');
+ if(!('BarcodeDetector' in window)||!navigator.mediaDevices){msg.textContent='This browser can\u2019t scan codes here. Type their code below, or open RaveCall in Chrome on Android.';return}
+ try{
+  const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+  v.srcObject=st;v.hidden=false;await v.play();msg.textContent='Point the camera at a friend\u2019s code.';
+  const det=new BarcodeDetector({formats:['qr_code']});
+  const go=async()=>{
+   if(v.hidden)return;
+   try{const r=await det.detect(v);const hit=r.find(c=>c.rawValue.startsWith('ravecall://voice/'));
+    if(hit){const id=hit.rawValue.split('/').pop();st.getTracks().forEach(t=>t.stop());v.hidden=true;addFriend('Friend '+id.slice(0,3),id);msg.textContent='Connected.';return}}catch(e){}
+   setTimeout(go,250)};go();
+ }catch(e){msg.textContent='Camera access was blocked. Allow camera permission in your browser settings and try again.'}
+};
+</script></body></html>
